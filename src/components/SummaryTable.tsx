@@ -1,13 +1,29 @@
+import { useQuery } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+
+import { api } from '../lib/axios';
 import { generateDateFromYearBeginning } from '../utils/generate-dates-from-year-beginning';
 import { HabitDay } from './HabitDay';
 
 const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+type Summary = {
+  id: string;
+  date: string;
+  amount: number;
+  completed: number;
+};
 
 export const SummaryTable = () => {
   const summaryDays = generateDateFromYearBeginning();
 
   const minimiumSummaryDatesSize = 18 * 7; //18weeks
   const amountOfDaysToFill = minimiumSummaryDatesSize - summaryDays.length;
+
+  const { data: summary, isLoading } = useQuery(['summary'], async () => {
+    const { data } = await api.get<Summary[]>('/summary');
+    return data;
+  });
 
   return (
     <div className="w-full flex">
@@ -23,9 +39,21 @@ export const SummaryTable = () => {
       </div>
 
       <div className="grid grid-rows-7 grid-flow-col gap-3">
-        {summaryDays.map((day) => (
-          <HabitDay key={day.toString()} />
-        ))}
+        {!isLoading &&
+          summaryDays.map((date) => {
+            const dayInSummary = summary?.find((day) => {
+              return dayjs(date).isSame(day.date, 'day');
+            });
+
+            return (
+              <HabitDay
+                defaultCompleted={dayInSummary?.completed}
+                amount={dayInSummary?.amount}
+                date={date}
+                key={date.toString()}
+              />
+            );
+          })}
 
         {amountOfDaysToFill > 0 &&
           Array.from({ length: amountOfDaysToFill }).map((_, index) => (
